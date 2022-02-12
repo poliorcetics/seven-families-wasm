@@ -25,6 +25,18 @@ pub enum State {
         node: NodeRef,
         timer: Option<Timeout>,
     },
+    Paused {
+        // A pause can happen during a 'waiting' state, in which case there is
+        // no current sentence.
+        current: Option<(Sentence, SentenceState)>,
+        // Since we don't keep the sound node here, it means the current
+        // sound will restart from the start when 'Resume' is sent.
+        //
+        // I did not consider this a default because the sound are very short
+        // (one to five words) and the game is made for people learning french:
+        // making them remember half a word and hear the second part several
+        // seconds later seems like a bad practice.
+    },
     Waiting {
         node: NodeRef,
         timer: Option<Timeout>,
@@ -42,6 +54,8 @@ pub enum GameMsg {
     SentenceState,
     NextSentence,
     SoundPermission,
+    Pause,
+    Resume,
 }
 
 impl Component for Game {
@@ -115,6 +129,50 @@ impl Component for Game {
 
                 true
             },
+            // State of game: a sound is playing
+            (State::Playing { timer, node, current }, GameMsg::Pause) => {
+                timer.take().map(Timeout::cancel);
+                node.cast::<HtmlAudioElement>().and_then(|x| x.pause().ok());
+
+                self.state = State::Paused {
+                    current: Some(*current),
+                };
+
+                true
+            },
+            // State of game: waiting for timer to launch next sentence
+            (State::Waiting { timer, node }, GameMsg::Pause) => {
+                timer.take().map(Timeout::cancel);
+                node.cast::<HtmlAudioElement>().and_then(|x| x.pause().ok());
+
+                self.state = State::Paused {
+                    current: None,
+                };
+
+                true
+            },
+            // State of game: resume paused game
+            (State::Paused { current }, GameMsg::Resume) => {
+                let timer = Some({
+                    let link = ctx.link().clone();
+                    Timeout::new(
+                        10_000, /* ms */
+                        move || link.send_message(GameMsg::NextSentence),
+                    )
+                });
+                let  node = NodeRef::default();
+
+                match current {
+                    None => self.state = State::Waiting { timer, node },
+                    Some(current) => self.state = State::Playing {
+                        timer,
+                        node,
+                        current: *current,
+                    },
+                }
+
+                true
+            }
             _ => false,
         }
     }
@@ -126,9 +184,17 @@ impl Component for Game {
                     { "Lancer le son" }
                 </button>
             },
-            State::Playing { current, ref node, .. } => self.audios(ctx, current, node.clone()),
+            State::Playing {
+                current, ref node, ..
+            } => html! {
+                <>
+                    { self.audios(ctx, current, node.clone()) }
+                    { self.pause_button(ctx) }
+                </>
+            },
+            State::Paused { .. } => html! { self.resume_button(ctx) },
             State::Waiting { .. } => html! { "En attente de la phrase suivante ..."  },
-            State::Finished => html! { { "Jeu terminé !" } },
+            State::Finished => html! { "Jeu terminé !" },
         };
 
         html! {
@@ -165,6 +231,22 @@ impl Game {
             >
                 { "Your browser does not support the audio element" }
             </audio>
+        }
+    }
+
+    fn pause_button(&self, ctx: &Context<Self>) -> Html {
+        html! {
+            <button onclick={ ctx.link().callback(|_| GameMsg::Pause) }>
+                { "Pause" }
+            </button>
+        }
+    }
+
+    fn resume_button(&self, ctx: &Context<Self>) -> Html {
+        html! {
+            <button onclick={ ctx.link().callback(|_| GameMsg::Resume) }>
+                { "Reprendre" }
+            </button>
         }
     }
 }

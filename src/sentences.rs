@@ -51,10 +51,6 @@ impl Sentences {
     pub fn draw_one(&mut self) -> Option<Sentence> {
         self.0.pop()
     }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
