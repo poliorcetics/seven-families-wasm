@@ -1,20 +1,32 @@
 //! Game page ('/game')
 use std::collections::HashSet;
+use std::time::Duration;
 
 use enum_iterator::IntoEnumIterator;
-use gloo_timers::callback::Timeout;
 use serde::{Deserialize, Serialize};
 use web_sys::HtmlAudioElement;
 use yew::prelude::*;
 use yew_router::prelude::*;
+use yew_router::scope_ext::HistoryHandle;
 
 use crate::family::Family;
 use crate::sentences::{Sentence, Sentences};
+use crate::timer::Timer;
+use crate::Route;
 
-#[derive(Debug)]
 pub struct Game {
     sentences: Sentences,
     state: State,
+    _history: HistoryHandle,
+}
+
+impl std::fmt::Debug for Game {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Game")
+            .field("sentences", &self.sentences)
+            .field("state", &self.state)
+            .finish()
+    }
 }
 
 #[derive(Debug)]
@@ -23,12 +35,13 @@ pub enum State {
     Playing {
         current: (Sentence, SentenceState),
         node: NodeRef,
-        timer: Option<Timeout>,
+        timer: Option<Timer>,
     },
     Paused {
         // A pause can happen during a 'waiting' state, in which case there is
         // no current sentence.
         current: Option<(Sentence, SentenceState)>,
+        timer: Option<Timer>,
         // Since we don't keep the sound node here, it means the current
         // sound will restart from the start when 'Resume' is sent.
         //
@@ -39,7 +52,7 @@ pub enum State {
     },
     Waiting {
         node: NodeRef,
-        timer: Option<Timeout>,
+        timer: Option<Timer>,
     },
     Finished,
 }
@@ -51,6 +64,7 @@ pub enum SentenceState {
 }
 
 pub enum GameMsg {
+    GoHome,
     SentenceState,
     NextSentence,
     SoundPermission,
@@ -72,9 +86,15 @@ impl Component for Game {
             .try_into()
             .unwrap_or_else(|_| HashSet::from_iter(Family::into_enum_iter()));
 
+        let history = ctx
+            .link()
+            .add_history_listener(ctx.link().callback(|_| GameMsg::GoHome))
+            .unwrap();
+
         Self {
             sentences: Sentences::new(families),
             state: State::GettingSoundPermission,
+            _history: history,
         }
     }
 
@@ -99,8 +119,8 @@ impl Component for Game {
                             node: Default::default(),
                             timer: Some({
                                 let link = ctx.link().clone();
-                                Timeout::new(
-                                    10_000, /* ms */
+                                Timer::new(
+                                    Duration::from_secs(10),
                                     move || link.send_message(GameMsg::NextSentence),
                                 )
                             }),
@@ -131,46 +151,54 @@ impl Component for Game {
             },
             // State of game: a sound is playing
             (State::Playing { timer, node, current }, GameMsg::Pause) => {
-                timer.take().map(Timeout::cancel);
-                node.cast::<HtmlAudioElement>().and_then(|x| x.pause().ok());
+                let sound_duration = node.cast::<HtmlAudioElement>().map_or(0.0, |x| { x.pause().ok(); x.duration() });
+                if let Some(t) = timer.as_mut() {
+                    t.pause();
+                    t.extend(Duration::from_secs_f64(sound_duration));
+                }
 
                 self.state = State::Paused {
                     current: Some(*current),
+                    timer: timer.take(),
                 };
 
                 true
             },
             // State of game: waiting for timer to launch next sentence
-            (State::Waiting { timer, node }, GameMsg::Pause) => {
-                timer.take().map(Timeout::cancel);
-                node.cast::<HtmlAudioElement>().and_then(|x| x.pause().ok());
+            (State::Waiting { timer, .. }, GameMsg::Pause) => {
+                if let Some(t) = timer.as_mut() {
+                    t.pause();
+                }
 
                 self.state = State::Paused {
                     current: None,
+                    timer: timer.take(),
                 };
 
                 true
             },
             // State of game: resume paused game
-            (State::Paused { current }, GameMsg::Resume) => {
-                let timer = Some({
+            (State::Paused { current, timer }, GameMsg::Resume) => {
+                let mut timer = timer.take();
+                if let Some(t) = timer.as_mut() {
                     let link = ctx.link().clone();
-                    Timeout::new(
-                        10_000, /* ms */
-                        move || link.send_message(GameMsg::NextSentence),
-                    )
-                });
+                    t.resume(move || link.send_message(GameMsg::NextSentence));
+                }
                 let  node = NodeRef::default();
 
-                match current {
+                match *current {
                     None => self.state = State::Waiting { timer, node },
                     Some(current) => self.state = State::Playing {
                         timer,
                         node,
-                        current: *current,
+                        current,
                     },
                 }
 
+                true
+            }
+            // State of game: gome home button was touched
+            (_, GameMsg::GoHome) => {
                 true
             }
             _ => false,
@@ -194,7 +222,12 @@ impl Component for Game {
             },
             State::Paused { .. } => html! { self.resume_button(ctx) },
             State::Waiting { .. } => html! { "En attente de la phrase suivante ..."  },
-            State::Finished => html! { "Jeu terminé !" },
+            State::Finished => html! {
+                <>
+                    <p> { "Jeu terminé !" } </p>
+                    { self.go_home_button(ctx) }
+                </>
+            },
         };
 
         html! {
@@ -244,8 +277,22 @@ impl Game {
 
     fn resume_button(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <button onclick={ ctx.link().callback(|_| GameMsg::Resume) }>
-                { "Reprendre" }
+            <>
+                <button onclick={ ctx.link().callback(|_| GameMsg::Resume) }>
+                    { "Reprendre" }
+                </button>
+                { self.go_home_button(ctx) }
+            </>
+        }
+    }
+
+    fn go_home_button(&self, ctx: &Context<Self>) -> Html {
+        let history = ctx.link().history().unwrap();
+        let onclick = Callback::once(move |_| history.push(Route::Home));
+
+        html! {
+            <button {onclick}>
+                { "Sélectionner d'autres familles" }
             </button>
         }
     }

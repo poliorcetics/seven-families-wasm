@@ -2,21 +2,25 @@
 //!
 //! More precisely:
 //!
-//! - Start screen
-//!    - Choose at least one family, at most all of them
-//!    - Choose a time N between sentences (in range MIN..MAX, default ??)
-//!    - Show family logos and colors
-//!    - Button to select all families
-//!    - Button to start game becomes visible after one family has been chosen
-//! - Game itself
-//!    - Pause button
-//!    - Listen Again button (reset timer ??)
-//!    - Sentences are given in random order, each N units (seconds)
-//! - Pause screen
-//!    - Quit game
-//!    - Resume game
-//! - Finishing the game
-//!    - All sentences have been said
+//! - [ ] Start screen
+//!    - [x] Choose at least one family, at most all of them
+//!    - [ ] Show family logos and colors
+//!    - [x] Button to (un)select all families
+//!    - [x] Button to start game becomes visible after one family has been chosen
+//! - [x] Game itself
+//!    - [x] Button to get permission to play sound
+//!    - [x] Pause button
+//!    - [x] Sentences are given in random order, each N units (seconds)
+//!    - [ ] Show nice buttons
+//! - [ ] Pause screen
+//!    - [x] Go back to selecting families
+//!    - [x] Resume game
+//!    - [ ] Choose timer duration, either when game is paused or not started
+//!    - [ ] Show nice buttons
+//! - [x] Finishing the game
+//!    - [x] All sentences have been said
+//!    - [x] Go back to selecting families
+//!    - [ ] Show nice buttons
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -24,6 +28,7 @@ mod app;
 mod family;
 mod game;
 mod sentences;
+mod timer;
 
 fn main() {
     yew::start_app::<Main>();

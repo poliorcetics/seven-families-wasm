@@ -9,6 +9,7 @@ edition = "2021"
 enum-iterator = "0.7.0"
 getrandom = { version = "0.2.4", features = ["js"], default-features = false }
 gloo-timers = "0.2.3"
+instant = { version = "0.1.12", features = ["wasm-bindgen"] }
 rand = { version = "0.8.4", default-features = false, features = ["getrandom"] }
 serde = { version = "1.0.136", features = ["derive"] }
 web-sys = { version = "0.3.56", features = ["HtmlAudioElement"] }
