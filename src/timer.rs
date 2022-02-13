@@ -1,15 +1,17 @@
-//! A timer than can be paused and resumed.
+//! A timer that returns the time left on stop.
 use instant::Instant;
 use std::time::Duration;
 
 use gloo_timers::callback::Timeout;
 
-// A timer than can be paused and resumed.
+/// A timer that returns the time left on stop.
+///
+/// On `drop` it is cancelled.
 #[derive(Debug)]
 pub struct Timer {
-    pub timeout: Option<Timeout>,
-    pub start: Instant,
-    pub duration_left: Duration,
+    timeout: Option<Timeout>,
+    start: Instant,
+    duration: Duration,
 }
 
 impl Timer {
@@ -21,32 +23,21 @@ impl Timer {
         Self {
             timeout: Some(Timeout::new(clamp_duration(duration), callback)),
             start: Instant::now(),
-            duration_left: duration,
+            duration,
         }
     }
 
-    // Pause the timer. Does not take into account any duration extension
-    // if `extend` was called before this.
-    pub fn pause(&mut self) {
+    // Stop the timer and return the time left before it was supposed to end.
+    pub fn stop(&mut self) -> Duration {
         self.timeout.take().map(Timeout::cancel);
-        self.duration_left = Instant::now().duration_since(self.start);
+        let elapsed = Instant::now().duration_since(self.start);
+        self.duration.saturating_sub(elapsed)
     }
+}
 
-    // Extend the timer by `duration`.
-    //
-    // To be effective, the timer **must** be paused and `resume` must be called next.
-    pub fn extend(&mut self, duration: Duration) {
-        self.duration_left += duration;
-    }
-
-    // Resume the timer with the duration left since the last `pause`
-    // (and possibly `extend`) call.
-    pub fn resume<F>(&mut self, callback: F)
-    where
-        F: 'static + FnOnce(),
-    {
-        self.timeout = Some(Timeout::new(clamp_duration(self.duration_left), callback));
-        self.start = Instant::now();
+impl Drop for Timer {
+    fn drop(&mut self) {
+        self.timeout.take().map(Timeout::cancel);
     }
 }
 
