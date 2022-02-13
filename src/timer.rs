@@ -13,8 +13,6 @@ pub struct Timer {
 }
 
 impl Timer {
-    const MAX: Duration = Duration::from_secs(10);
-
     /// Create and immediately launch a timer.
     pub fn new<F>(duration: Duration, callback: F) -> Self
     where
@@ -38,10 +36,7 @@ impl Timer {
     //
     // To be effective, the timer **must** be paused and `resume` must be called next.
     pub fn extend(&mut self, duration: Duration) {
-        self.duration_left = self
-            .duration_left
-            .saturating_add(duration)
-            .clamp(Duration::ZERO, Self::MAX);
+        self.duration_left += duration;
     }
 
     // Resume the timer with the duration left since the last `pause`

@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use enum_iterator::IntoEnumIterator;
 use serde::{Deserialize, Serialize};
-use web_sys::HtmlAudioElement;
+use web_sys::{HtmlAudioElement, HtmlInputElement};
 use yew::prelude::*;
 use yew_router::prelude::*;
 use yew_router::scope_ext::HistoryHandle;
@@ -15,6 +15,7 @@ use crate::timer::Timer;
 use crate::Route;
 
 pub struct Game {
+    duration: Duration,
     sentences: Sentences,
     state: State,
     _history: HistoryHandle,
@@ -51,7 +52,6 @@ pub enum State {
         // seconds later seems like a bad practice.
     },
     Waiting {
-        node: NodeRef,
         timer: Option<Timer>,
     },
     Finished,
@@ -70,6 +70,7 @@ pub enum GameMsg {
     SoundPermission,
     Pause,
     Resume,
+    ChangeTimer(u64),
 }
 
 impl Component for Game {
@@ -92,6 +93,7 @@ impl Component for Game {
             .unwrap();
 
         Self {
+            duration: Duration::from_secs(20),
             sentences: Sentences::new(families),
             state: State::GettingSoundPermission,
             _history: history,
@@ -106,6 +108,15 @@ impl Component for Game {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match (&mut self.state, msg) {
+            // State of game: timer duration was changed before game started.
+            (State::GettingSoundPermission, GameMsg::ChangeTimer(seconds)) => {
+                self.duration = Duration::from_secs(seconds).clamp(
+                    Self::MIN_TIMER_DURATION,
+                    Self::MAX_TIMER_DURATION,
+                );
+
+                true
+            },
             // State: was waiting for permission to play sound, just got it.
             (State::GettingSoundPermission, GameMsg::SoundPermission)
             // State: launch next sentence.
@@ -120,7 +131,7 @@ impl Component for Game {
                             timer: Some({
                                 let link = ctx.link().clone();
                                 Timer::new(
-                                    Duration::from_secs(10),
+                                    self.duration,
                                     move || link.send_message(GameMsg::NextSentence),
                                 )
                             }),
@@ -133,7 +144,7 @@ impl Component for Game {
             // State of the game: a sound just finished playing.
             (
                 State::Playing {
-                    current, node, timer
+                    current, timer, ..
                 },
                 GameMsg::SentenceState,
             ) => {
@@ -141,7 +152,6 @@ impl Component for Game {
                     (st, SentenceState::Family) => *current = (*st, SentenceState::Element),
                     (_, SentenceState::Element) => {
                         self.state = State::Waiting {
-                            node: node.clone(),
                             timer: timer.take(),
                         };
                     }
@@ -182,12 +192,14 @@ impl Component for Game {
                 let mut timer = timer.take();
                 if let Some(t) = timer.as_mut() {
                     let link = ctx.link().clone();
-                    t.resume(move || link.send_message(GameMsg::NextSentence));
+                    t.resume(
+                        move || link.send_message(GameMsg::NextSentence),
+                    );
                 }
                 let  node = NodeRef::default();
 
                 match *current {
-                    None => self.state = State::Waiting { timer, node },
+                    None => self.state = State::Waiting { timer },
                     Some(current) => self.state = State::Playing {
                         timer,
                         node,
@@ -198,9 +210,7 @@ impl Component for Game {
                 true
             }
             // State of game: gome home button was touched
-            (_, GameMsg::GoHome) => {
-                true
-            }
+            (State::Paused { .. } | State::Finished, GameMsg::GoHome) => true,
             _ => false,
         }
     }
@@ -208,15 +218,34 @@ impl Component for Game {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let state_view = match self.state {
             State::GettingSoundPermission => html! {
-                <button onclick={ ctx.link().callback(|_| Self::Message::SoundPermission) }>
-                    { "Lancer le son" }
-                </button>
+                <>
+                    <button onclick={ ctx.link().callback(|_| Self::Message::SoundPermission) }>
+                        { "Lancer le son" }
+                    </button>
+                    <input
+                        name="ratio"
+                        type="range"
+                        min={ Self::MIN_TIMER_DURATION_STR }
+                        max={ Self::MAX_TIMER_DURATION_STR }
+                        step="1"
+                        value={ format!("{}", self.duration.as_secs()) }
+                        oninput={
+                            ctx.link().callback(|e: InputEvent| {
+                                // Unchecked: we define the callback inside the element it concerns, we cannot
+                                // be referencing the wrong one.
+                                let input: HtmlInputElement = e.target_unchecked_into();
+                                GameMsg::ChangeTimer(input.value_as_number().round().clamp(0.0, u64::MAX as _) as u64)
+                            })
+                        }
+                    />
+                    { format!("Compteur: {}s", self.duration.as_secs()) }
+                </>
             },
             State::Playing {
                 current, ref node, ..
             } => html! {
                 <>
-                    { self.audios(ctx, current, node.clone()) }
+                    { self.audio_player(ctx, current, node.clone()) }
                     { self.pause_button(ctx) }
                 </>
             },
@@ -240,7 +269,12 @@ impl Component for Game {
 }
 
 impl Game {
-    fn audios(
+    const MIN_TIMER_DURATION: Duration = Duration::from_secs(10);
+    const MAX_TIMER_DURATION: Duration = Duration::from_secs(60);
+    const MIN_TIMER_DURATION_STR: &'static str = "10";
+    const MAX_TIMER_DURATION_STR: &'static str = "60";
+
+    fn audio_player(
         &self,
         ctx: &Context<Self>,
         (sentence, sentence_state): (Sentence, SentenceState),
