@@ -6,6 +6,7 @@ use enum_iterator::IntoEnumIterator;
 use gloo_timers::callback::Interval;
 use serde::{Deserialize, Serialize};
 use web_sys::{HtmlAudioElement, HtmlInputElement};
+use yew::html::Scope;
 use yew::prelude::*;
 use yew_router::prelude::*;
 use yew_router::scope_ext::HistoryHandle;
@@ -38,7 +39,7 @@ impl std::fmt::Debug for Game {
 }
 
 #[derive(Debug)]
-pub enum State {
+pub enum State { // Don't sort alphabetically here, we want to follow the flow of the game.
     GettingSoundPermission,
     Playing {
         current: (Sentence, SentenceState),
@@ -68,8 +69,8 @@ pub enum State {
 
 #[derive(Debug, Clone, Copy)]
 pub enum SentenceState {
-    Family,
     Element,
+    Family,
 }
 
 #[derive(Debug)]
@@ -90,7 +91,8 @@ impl Component for Game {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        let location = ctx.link().location().unwrap();
+        let link = ctx.link();
+        let location = link.location().unwrap();
         let families = location
             .query::<GameQuery>()
             .unwrap_or(GameQuery { families: 0 });
@@ -98,9 +100,8 @@ impl Component for Game {
             .try_into()
             .unwrap_or_else(|_| HashSet::from_iter(Family::into_enum_iter()));
 
-        let history = ctx
-            .link()
-            .add_history_listener(ctx.link().callback(|_| Msg::GoHome))
+        let history = link
+            .add_history_listener(link.callback(|_| Msg::GoHome))
             .unwrap();
 
         Self {
@@ -112,8 +113,9 @@ impl Component for Game {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        if let State::Playing { ref node, .. } = self.state {
-            node.cast::<HtmlAudioElement>().and_then(|x| x.play().ok());
+        if let State::Playing { node, .. } = &self.state {
+            node.cast::<HtmlAudioElement>()
+                .and_then(|audio| audio.play().ok());
         }
     }
 
@@ -123,7 +125,7 @@ impl Component for Game {
 
         match (&mut self.state, msg) {
             // State of game: timer duration was changed before game started.
-            (State::GettingSoundPermission, Msg::ChangeTimer(seconds)) => {
+            (State::GettingSoundPermission | State::WaitingPaused { .. } | State::PlayingPaused { .. }, Msg::ChangeTimer(seconds)) => {
                 self.duration = Duration::from_secs(seconds).clamp(
                     MIN_TIMER_DURATION,
                     MAX_TIMER_DURATION,
@@ -149,23 +151,11 @@ impl Component for Game {
                 match current {
                     (st, SentenceState::Family) => *current = (*st, SentenceState::Element),
                     (_, SentenceState::Element) => {
-                        self.state = State::Waiting {
-                            timer: {
-                                let link = ctx.link().clone();
-                                Timer::new(
-                                    self.duration,
-                                    move || link.send_message(Msg::NextSentence),
-                                )
-                            },
-                            time_left: self.duration,
-                            seconds: {
-                                let link = ctx.link().clone();
-                                Interval::new(
-                                    1_000 /* ms */,
-                                    move || link.send_message(Msg::UpdateTime),
-                                )
-                            },
-                        };
+                        if self.sentences.is_empty() {
+                            self.state = State::Finished;
+                        } else {
+                            self.state = waiting_state(ctx.link(), self.duration);
+                        }
                     }
                 }
             },
@@ -198,25 +188,7 @@ impl Component for Game {
             }
             // State of game: resume in waiting mode
             (State::WaitingPaused { time_left }, Msg::Resume) => {
-                let time_left = *time_left;
-
-                self.state = State::Waiting {
-                    timer: {
-                        let link = ctx.link().clone();
-                        Timer::new(
-                            time_left,
-                            move || link.send_message(Msg::NextSentence),
-                        )
-                    },
-                    time_left,
-                    seconds: {
-                        let link = ctx.link().clone();
-                        Interval::new(
-                            1_000 /* ms */,
-                            move || link.send_message(Msg::UpdateTime),
-                        )
-                    },
-                };
+                self.state = waiting_state(ctx.link(), *time_left);
             }
             _ => (),
         }
@@ -225,56 +197,41 @@ impl Component for Game {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        let link = ctx.link();
         let state_view = match self.state {
             State::GettingSoundPermission => html! {
                 <>
                     <button onclick={ ctx.link().callback(|_| Self::Message::SoundPermission) }>
                         { "Lancer le son" }
                     </button>
-                    <input
-                        name="ratio"
-                        type="range"
-                        min={ MIN_TIMER_DURATION_STR }
-                        max={ MAX_TIMER_DURATION_STR }
-                        step="1"
-                        value={ format!("{}", self.duration.as_secs()) }
-                        oninput={
-                            ctx.link().callback(|e: InputEvent| {
-                                // Unchecked: we define the callback inside the element it concerns, we cannot
-                                // be referencing the wrong one.
-                                let input: HtmlInputElement = e.target_unchecked_into();
-                                Msg::ChangeTimer(input.value_as_number().round().clamp(0.0, u64::MAX as _) as u64)
-                            })
-                        }
-                    />
-                    { format!("Compteur: {}s", self.duration.as_secs()) }
+                    { timer_slider(link, self.duration) }
                 </>
             },
             State::Playing {
                 current, ref node, ..
             } => html! {
                 <>
-                    { audio_player(ctx, current, node.clone()) }
-                    { pause_button(ctx) }
+                    { audio_player(link, current, node.clone()) }
+                    { pause_button(link) }
                 </>
             },
-            State::PlayingPaused { .. } => html! { resume_view(ctx) },
+            State::PlayingPaused { .. } => html! { resume_view(link, self.duration) },
             State::Waiting { time_left, .. } => html! {
                 <>
-                    <p> { format!("En attente de la phrase suivante ... {}s", time_left.as_secs()) } </p>
-                    { pause_button(ctx) }
+                    <p> { format!("Phrase suivante dans ... {}s", time_left.as_secs()) } </p>
+                    { pause_button(link) }
                 </>
             },
-            State::WaitingPaused { .. } => html! {
+            State::WaitingPaused { time_left, .. } => html! {
                 <>
-                    <p> { "En attente de la phrase suivante ... (Pause)" } </p>
-                    { resume_view(ctx) }
+                    <p> { format!("Phrase suivante dans ... {}s (Pause)", time_left.as_secs()) } </p>
+                    { resume_view(link, self.duration) }
                 </>
             },
             State::Finished => html! {
                 <>
                     <p> { "Jeu terminé !" } </p>
-                    { go_home_button(ctx) }
+                    { go_home_button(link) }
                 </>
             },
         };
@@ -288,8 +245,24 @@ impl Component for Game {
     }
 }
 
+fn waiting_state(link: &Scope<Game>, time_left: Duration) -> State {
+    State::Waiting {
+        time_left,
+        timer: {
+            let link = link.clone();
+            Timer::new(time_left, move || link.send_message(Msg::NextSentence))
+        },
+        seconds: {
+            let link = link.clone();
+            Interval::new(
+                1_000, /* ms */
+                move || link.send_message(Msg::UpdateTime),
+            )
+        },
+    }
+}
 fn audio_player(
-    ctx: &Context<Game>,
+    link: &Scope<Game>,
     (sentence, sentence_state): (Sentence, SentenceState),
     node: NodeRef,
 ) -> Html {
@@ -297,7 +270,7 @@ fn audio_player(
         SentenceState::Family => sentence.family_sound_file(),
         SentenceState::Element => sentence.sentence_sound_file(),
     };
-    let onended = ctx.link().callback(|_| Msg::SentenceState);
+    let onended = link.callback(|_| Msg::SentenceState);
 
     html! {
         <audio
@@ -314,24 +287,46 @@ fn audio_player(
     }
 }
 
-fn pause_button(ctx: &Context<Game>) -> Html {
-    html! { <button onclick={ ctx.link().callback(|_| Msg::Pause) }> { "Pause" } </button> }
-}
-
-fn resume_view(ctx: &Context<Game>) -> Html {
+fn timer_slider(link: &Scope<Game>, current_duration: Duration) -> Html {
     html! {
         <>
-            <button onclick={ ctx.link().callback(|_| Msg::Resume) }> { "Reprendre" } </button>
-            { go_home_button(ctx) }
+            <input
+                name="ratio"
+                type="range"
+                min={ MIN_TIMER_DURATION_STR }
+                max={ MAX_TIMER_DURATION_STR }
+                step="1"
+                value={ format!("{}", current_duration.as_secs()) }
+                oninput={
+                    link.callback(|e: InputEvent| {
+                        let input: HtmlInputElement = e.target_unchecked_into();
+                        Msg::ChangeTimer(input.value_as_number().round().clamp(0.0, u64::MAX as _) as u64)
+                    })
+                }
+            />
+            { format!("Compteur: {}s", current_duration.as_secs()) }
         </>
     }
 }
 
-fn go_home_button(ctx: &Context<Game>) -> Html {
-    let history = ctx.link().history().unwrap();
+fn pause_button(link: &Scope<Game>) -> Html {
+    html! { <button onclick={ link.callback(|_| Msg::Pause) }> { "Pause" } </button> }
+}
+fn resume_view(link: &Scope<Game>, current_duration: Duration) -> Html {
+    html! {
+        <>
+            <button onclick={ link.callback(|_| Msg::Resume) }> { "Reprendre" } </button>
+            { timer_slider(link, current_duration) }
+            { go_home_button(link) }
+        </>
+    }
+}
+
+fn go_home_button(link: &Scope<Game>) -> Html {
+    let history = link.history().unwrap();
     let onclick = Callback::once(move |_| history.push(Route::Home));
 
-    html! { <button {onclick}> { "Sélectionner d'autres familles" } </button> }
+    html! { <button {onclick}> { "Retourner à la sélection de familles" } </button> }
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]

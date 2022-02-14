@@ -51,6 +51,10 @@ impl Sentences {
     pub fn draw_one(&mut self) -> Option<Sentence> {
         self.0.pop()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
