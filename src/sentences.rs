@@ -1,4 +1,4 @@
-//! Sentences
+//! Sentences for the game.
 use std::collections::HashSet;
 
 use enum_iterator::IntoEnumIterator;
@@ -48,15 +48,18 @@ impl Sentences {
         Self(sentences)
     }
 
+    /// Draw one sentence from the list.
     pub fn draw_one(&mut self) -> Option<Sentence> {
         self.0.pop()
     }
 
+    /// `true` if there are no more sentences.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }
 
+/// All the possible sentences.
 #[derive(Debug, Clone, Copy)]
 pub enum Sentence {
     /// Ustensils used by a chef when cooking.
@@ -77,6 +80,7 @@ pub enum Sentence {
 }
 
 impl Sentence {
+    /// Sound file for the whole family.
     pub fn family_sound_file(&self) -> &'static str {
         match self {
             Sentence::ChiefKit(st) => st.family_sound_file(),
@@ -89,15 +93,16 @@ impl Sentence {
         }
     }
 
-    pub fn sentence_sound_file(&self) -> &'static str {
+    /// Sound file for the specific element.
+    pub fn element_sound_file(&self) -> &'static str {
         match self {
-            Sentence::ChiefKit(st) => st.sentence_sound_file(),
-            Sentence::Fruits(st) => st.sentence_sound_file(),
-            Sentence::Hygiene(st) => st.sentence_sound_file(),
-            Sentence::ProfessionalGestures(st) => st.sentence_sound_file(),
-            Sentence::RedFruits(st) => st.sentence_sound_file(),
-            Sentence::SmallUstensils(st) => st.sentence_sound_file(),
-            Sentence::Trimmings(st) => st.sentence_sound_file(),
+            Sentence::ChiefKit(st) => st.element_sound_file(),
+            Sentence::Fruits(st) => st.element_sound_file(),
+            Sentence::Hygiene(st) => st.element_sound_file(),
+            Sentence::ProfessionalGestures(st) => st.element_sound_file(),
+            Sentence::RedFruits(st) => st.element_sound_file(),
+            Sentence::SmallUstensils(st) => st.element_sound_file(),
+            Sentence::Trimmings(st) => st.element_sound_file(),
         }
     }
 }
@@ -106,213 +111,156 @@ impl Sentence {
 ///
 /// The file for `$name::$variant` is `assets / $folder / $file .mp3`.
 macro_rules! assets {
-    ($name:ty: $folder:expr; $($variant:ident: $file:expr),+ $(,)?) => {
+    ($(#[$meta:meta])* $name:ident: $folder:expr; $($(#[$variant_meta:meta])* $variant:ident: $file:expr),+ $(,)?) => {
+        $(#[$meta])*
+        #[derive(Debug, Clone, Copy, IntoEnumIterator)]
+        pub enum $name {
+            $(
+                $(#[$variant_meta])*
+                $variant,
+            )+
+        }
+
         impl $name {
             /// Path to the sound file for the family, absolute from the root
             /// of the website.
-            fn family_sound_file(&self) -> &'static str {
-                concat!("/assets/", $folder, "/", "0-famille.mp3")
+            const fn family_sound_file(&self) -> &'static str {
+                // Ensure the file exists.
+                const _: &[u8] = include_bytes!(concat!("../assets/", $folder, "/0-famille.mp3")).as_slice();
+                // Relative to the root of the website.
+                concat!("/assets/", $folder, "/0-famille.mp3")
             }
 
             /// Path to the sound file for the sentence, absolute from the root of
             /// the website.
-            fn sentence_sound_file(&self) -> &'static str {
+            const fn element_sound_file(&self) -> &'static str {
+                // Ensure the file exists.
+                $( const _: &[u8] = include_bytes!(concat!("../assets/", $folder, "/", $file, ".mp3")).as_slice(); )+
                 match self {
-                    $(
-                        Self::$variant => concat!("/assets/", $folder, "/", $file, ".mp3"),
-                    )+
+                    // Relative to the root of the website.
+                    $( Self::$variant => concat!("/assets/", $folder, "/", $file, ".mp3"), )+
                 }
             }
         }
     };
 }
 
-/// Malette
-#[derive(Debug, Clone, Copy, IntoEnumIterator)]
-pub enum ChiefKit {
-    /// Canneleur
-    Coring,
-    /// Filet de sole
-    FilletKnife,
-    /// Couteau d'office
-    ParingKnife,
-    /// Économe
-    Peeler,
-    /// Éminceur
-    Slicer,
-    /// Zesteur,
-    Zester,
-}
-
 assets! {
+    /// Malette
     ChiefKit: "mallette";
+    /// Canneleur
     Coring: "canneleur",
+    /// Filet de sole
     FilletKnife: "filet-de-sole",
+    /// Couteau d'office
     ParingKnife: "couteau-d-office",
+    /// Économe
     Peeler: "econome",
+    /// Éminceur
     Slicer: "eminceur",
+    /// Zesteur,
     Zester: "zesteur",
 }
 
-/// Fruits
-#[derive(Debug, Clone, Copy, IntoEnumIterator)]
-pub enum Fruits {
-    /// Pomme
-    Apple,
-    /// Abricot
-    Apricot,
-    /// Raisin
-    Grapes,
-    /// Orange
-    Orange,
-    /// Pêche
-    Peach,
-    /// Prune
-    Plum,
-}
-
 assets! {
+    /// Fruits
     Fruits: "fruits";
+    /// Pomme
     Apple: "pomme",
+    /// Abricot
     Apricot: "abricot",
+    /// Raisin
     Grapes: "raisin",
+    /// Orange
     Orange: "orange",
+    /// Pêche
     Peach: "peche",
+    /// Prune
     Plum: "prune",
 }
 
-/// Hygiène
-#[derive(Debug, Clone, Copy, IntoEnumIterator)]
-pub enum Hygiene {
-    /// Bactérie
-    Bacterium,
-    /// Nettoyage
-    Cleaning,
-    /// Désinfectant
-    Disinfectant,
-    /// EPI
-    Epi,
-    /// Microbe
-    Microbe,
-    /// Moisissure
-    Mould,
-}
-
 assets! {
+    /// Hygiène
     Hygiene: "hygiene";
+    /// Bactérie
     Bacterium: "bacterie",
+    /// Nettoyage
     Cleaning: "nettoyage",
+    /// Désinfectant
     Disinfectant: "desinfectant",
+    /// EPI
     Epi: "epi",
+    /// Microbe
     Microbe: "microbe",
+    /// Moisissure
     Mould: "moisissure",
 }
 
-/// Gestes professionnels
-#[derive(Debug, Clone, Copy, IntoEnumIterator)]
-pub enum ProfessionalGestures {
-    /// Escalopper
-    Cutletting,
-    /// Abaisser
-    Lower,
-    /// Émincer
-    Slice,
-    /// Suer
-    Sweat,
-    /// Tourner
-    Turn,
-    /// Vanner
-    Winnow,
-}
-
 assets! {
+    /// Gestes professionnels
     ProfessionalGestures: "gestes-professionnels";
+    /// Escalopper
     Cutletting: "escalopper",
+    /// Abaisser
     Lower: "abaisser",
+    /// Émincer
     Slice: "emincer",
+    /// Suer
     Sweat: "suer",
+    /// Tourner
     Turn: "tourner",
+    /// Vanner
     Winnow: "vanner",
 }
 
-/// Fruits rouges
-#[derive(Debug, Clone, Copy, IntoEnumIterator)]
-pub enum RedFruits {
-    /// Mûre
-    Blackberry,
-    /// Cassis
-    Blackcurrant,
-    /// Cerise
-    Cherry,
-    /// Framboise
-    Raspberry,
-    /// Groseille
-    Redcurrant,
-    /// Fraise
-    Strawberry,
-}
-
 assets! {
+    /// Fruits rouges
     RedFruits: "fruits-rouges";
+    /// Mûre
     Blackberry: "mure",
+    /// Cassis
     Blackcurrant: "cassis",
+    /// Cerise
     Cherry: "cerise",
+    /// Framboise
     Raspberry: "framboise",
+    /// Groseille
     Redcurrant: "groseille",
+    /// Fraise
     Strawberry: "fraise",
 }
 
-/// Petit matériel
-#[derive(Debug, Clone, Copy, IntoEnumIterator)]
-pub enum SmallUstensils {
-    /// Bahut
-    Chests,
-    /// Cul de poule
-    ChickenButt,
-    /// Chinois étamine
-    ChineseCheesecloth,
-    /// Plaque à débarasser
-    CleaningPlate,
-    /// Rondeau
-    Roundel,
-    /// Écumoire
-    Skimmer,
-}
-
 assets! {
+    /// Petit matériel
     SmallUstensils: "petit-materiel";
+    /// Bahut
     Chests: "bahut",
+    /// Cul de poule
     ChickenButt: "cul-de-poule",
+    /// Chinois étamine
     ChineseCheesecloth: "chinois-etamine",
+    /// Plaque à débarasser
     CleaningPlate: "plaque-a-debarasser",
+    /// Rondeau
     Roundel: "rondeau",
+    /// Écumoire
     Skimmer: "ecumoire",
 }
 
-// Funny how many words are directly taken from French here
-/// Taillages
-#[derive(Debug, Clone, Copy, IntoEnumIterator)]
-pub enum Trimmings {
-    /// Brunoise
-    Brunoise,
-    /// Jardinière
-    Jardiniere,
-    /// Julienne
-    JulienneStrip,
-    /// Macédoine
-    Macedonia,
-    /// Mirepoix
-    Mirepoix,
-    /// Paysanne
-    PaysanneCut,
-}
-
+// Funny how many words are directly taken from French here#[derive(Debug, Clone, Copy, IntoEnumIterator)]
 assets! {
+    /// Taillages
     Trimmings: "taillages";
+    /// Brunoise
     Brunoise: "brunoise",
+    /// Jardinière
     Jardiniere: "jardiniere",
+    /// Julienne
     JulienneStrip: "julienne",
+    /// Macédoine
     Macedonia: "macedoine",
+    /// Mirepoix
     Mirepoix: "mirepoix",
+    /// Paysanne
     PaysanneCut: "paysanne",
 }
