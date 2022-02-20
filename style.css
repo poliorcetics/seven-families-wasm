@@ -1,3 +1,5 @@
+/* Style applied all the time, regardless of theme */
+
 * {
   box-sizing: border-box;
   font-family: Helvetica;
@@ -16,13 +18,56 @@ div {
 }
 
 button {
-  background-color: darkblue;
   border-radius: 20px;
   border: none;
-  color: white;
   display: block;
   padding: 2% 4%;
 }
+
+/* Adapt to light and dark themes */
+
+@media (prefers-color-scheme: dark) {
+  *, html {
+    background-color: black;
+    color: #DDDDDD;
+  }
+
+  button {
+    background-color: #16537E;
+  }
+
+  button.family_selected {
+    background-color: #00546F;
+  }
+
+  button.family_not_selected {
+    background-color: #444444;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  *, html {
+    background-color: #DDDDDD;
+    color: black;
+  }
+
+  button {
+    background-color: darkblue;
+    color: #DDDDDD;
+  }
+
+  button.family_selected {
+    background-color: #008CBA;
+    color: #DDDDDD;
+  }
+
+  button.family_not_selected {
+    background-color: #E7E7E7;
+    color: black;
+  }
+}
+
+/* Input for timer duration */
 
 input[type=range] {
   -webkit-appearance: none;
