@@ -279,7 +279,7 @@ impl Component for Game {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
 
-        let state_view = match self.state {
+        match self.state {
             // State: we do not yet have permission to play sound.
             State::GettingSoundPermission => html! {
                 <>
@@ -315,9 +315,7 @@ impl Component for Game {
                     <p> { "Jeu terminé !" } </p>
                 </>
             },
-        };
-
-        html! { state_view }
+        }
     }
 }
 
