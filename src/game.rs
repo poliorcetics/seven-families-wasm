@@ -7,6 +7,8 @@ use std::time::Duration;
 use enum_iterator::IntoEnumIterator;
 use gloo_timers::callback::Interval;
 use serde::{Deserialize, Serialize};
+use wasm_bindgen::closure::Closure;
+use wasm_bindgen::JsCast;
 use web_sys::{HtmlAudioElement, HtmlInputElement};
 use yew::html::Scope;
 use yew::prelude::*;
@@ -35,6 +37,8 @@ const MAX_TIMER_DURATION_STR: &str = "60";
 /// This is not possible for everything, especially data that must live through
 /// several non-contiguous states.
 pub struct Game {
+    audio: HtmlAudioElement,
+    _audio_listener: Closure<dyn Fn(Event)>,
     /// Time interval between each sentence.
     ///
     /// See [`MIN_TIMER_DURATION`], [`MAX_TIMER_DURATION`] and [`State::Waiting`].
@@ -80,8 +84,6 @@ pub enum State {
     Playing {
         /// The sentence and at which point of if the game is.
         current: (Sentence, SentenceState),
-        /// Reference to the sound node, to play/pause it.
-        node: NodeRef,
     },
     /// Playing is paused.
     ///
@@ -172,7 +174,16 @@ impl Component for Game {
             .add_history_listener(link.callback(|_| Msg::GoHome))
             .unwrap();
 
+        let audio = HtmlAudioElement::new().unwrap();
+        let link = ctx.link().clone();
+        let audio_listener = Closure::<dyn Fn(Event)>::wrap(Box::new(move |_| {
+            link.send_message(Msg::SentenceState);
+        }));
+        audio.set_onended(Some(audio_listener.as_ref().unchecked_ref()));
+
         Self {
+            audio,
+            _audio_listener: audio_listener,
             duration: Duration::from_secs(5),
             sentences: Sentences::new(families),
             state: State::GettingSoundPermission,
@@ -181,9 +192,12 @@ impl Component for Game {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        if let State::Playing { node, .. } = &self.state {
-            node.cast::<HtmlAudioElement>()
-                .and_then(|audio| audio.play().ok());
+        if let State::Playing { current } = &self.state {
+            self.audio.set_src(match current.1 {
+                SentenceState::Element => current.0.element_sound_file(),
+                SentenceState::Family => current.0.family_sound_file(),
+            });
+            self.audio.play().ok();
         }
     }
 
@@ -209,13 +223,12 @@ impl Component for Game {
                     Some(st) => {
                         self.state = State::Playing {
                             current: (st, SentenceState::Family),
-                            node: Default::default(),
                         }
                     }
                 }
             }
             // State of the game: a sound just finished playing.
-            (State::Playing { current, .. }, Msg::SentenceState | Msg::UpdateTime) => {
+            (State::Playing { current }, Msg::SentenceState) => {
                 match current {
                     (st, SentenceState::Family) => *current = (*st, SentenceState::Element),
                     (_, SentenceState::Element) => {
@@ -228,8 +241,8 @@ impl Component for Game {
                 }
             },
             // State of game: a sound is playing
-            (State::Playing { node, current }, Msg::Pause) => {
-                node.cast::<HtmlAudioElement>().and_then(|x| x.pause().ok());
+            (State::Playing { current }, Msg::Pause) => {
+                self.audio.pause().ok();
 
                 self.state = State::PlayingPaused {
                     current: *current,
@@ -250,7 +263,6 @@ impl Component for Game {
             // State of game: resume in playing mode
             (State::PlayingPaused { current }, Msg::Resume) => {
                 self.state = State::Playing {
-                    node: NodeRef::default(),
                     current: *current,
                 };
             }
@@ -279,14 +291,7 @@ impl Component for Game {
                 </>
             },
             // State: sound is currently playing.
-            State::Playing {
-                current, ref node, ..
-            } => html! {
-                <>
-                    { pause_button(link) }
-                    { audio_player(link, current, node.clone()) }
-                </>
-            },
+            State::Playing { .. } => html! { pause_button(link) },
             // State: sound was paused.
             State::PlayingPaused { .. } => html! { resume_view(link, self.duration) },
             // State: waiting for the coutdown to the next sentence to end.
@@ -336,33 +341,6 @@ fn waiting_state(link: &Scope<Game>, time_left: Duration) -> State {
                 move || link.send_message(Msg::UpdateTime),
             )
         },
-    }
-}
-
-/// Invisible audio player which contains the audio HTML element to play the sentences.
-fn audio_player(
-    link: &Scope<Game>,
-    (sentence, sentence_state): (Sentence, SentenceState),
-    node: NodeRef,
-) -> Html {
-    let src = match sentence_state {
-        SentenceState::Family => sentence.family_sound_file(),
-        SentenceState::Element => sentence.element_sound_file(),
-    };
-    let onended = link.callback(|_| Msg::SentenceState);
-
-    html! {
-        <audio
-            // controls=true // use for debugging sounds
-            type="audio/mp3"
-            id="sound-player"
-
-            ref={ node }
-            { src }
-            { onended }
-        >
-            { "Your browser does not support the audio element" }
-        </audio>
     }
 }
 
