@@ -25,6 +25,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 mod app;
+mod audio;
 mod family;
 mod game;
 mod sentences;

@@ -7,14 +7,13 @@ use std::time::Duration;
 use enum_iterator::IntoEnumIterator;
 use gloo_timers::callback::Interval;
 use serde::{Deserialize, Serialize};
-use wasm_bindgen::closure::Closure;
-use wasm_bindgen::JsCast;
-use web_sys::{HtmlAudioElement, HtmlInputElement};
+use web_sys::HtmlInputElement;
 use yew::html::Scope;
 use yew::prelude::*;
 use yew_router::prelude::*;
 use yew_router::scope_ext::HistoryHandle;
 
+use crate::audio::Audio;
 use crate::family::Family;
 use crate::sentences::{Sentence, Sentences};
 use crate::timer::Timer;
@@ -37,8 +36,19 @@ const MAX_TIMER_DURATION_STR: &str = "60";
 /// This is not possible for everything, especially data that must live through
 /// several non-contiguous states.
 pub struct Game {
-    audio: HtmlAudioElement,
-    _audio_listener: Closure<dyn Fn(Event)>,
+    /// The audio element used to play the sound.
+    ///
+    /// Ideally it would not exist all the time, only during the [`State::Playing`] phase.
+    /// This is not possible though, because mobile web browser require a user interaction
+    /// to happen between the time the audio element is created and the time a sound is played
+    /// from it. If we recreate the element each time, we end up in a situation where there
+    /// have been user interactions ([`State::GettingSoundPermission`]) but since the audio
+    /// element has been created after, it is not taken into account.
+    ///
+    /// This is fixed by creating the audio element once on the first load of the page and
+    /// simply upadting its [`src`][Audio::set_src()] element each time we switch to the next
+    /// element or sentence.
+    audio: Audio,
     /// Time interval between each sentence.
     ///
     /// See [`MIN_TIMER_DURATION`], [`MAX_TIMER_DURATION`] and [`State::Waiting`].
@@ -86,14 +96,6 @@ pub enum State {
         current: (Sentence, SentenceState),
     },
     /// Playing is paused.
-    ///
-    /// Since we don't keep the sound node here, it means the current
-    /// sound will restart from the start when 'Resume' is sent.
-    ///
-    /// I did not consider this a default because the sound are very short
-    /// (one to five words) and the game is made for people learning french:
-    /// making them remember half a word and hear the second part several
-    /// seconds later seems like a bad practice.
     PlayingPaused {
         /// The sentence to resume and which part of it.
         current: (Sentence, SentenceState),
@@ -174,17 +176,12 @@ impl Component for Game {
             .add_history_listener(link.callback(|_| Msg::GoHome))
             .unwrap();
 
-        let audio = HtmlAudioElement::new().unwrap();
-        let link = ctx.link().clone();
-        let audio_listener = Closure::<dyn Fn(Event)>::wrap(Box::new(move |_| {
-            link.send_message(Msg::SentenceState);
-        }));
-        audio.set_onended(Some(audio_listener.as_ref().unchecked_ref()));
+        let link = link.clone();
+        let audio = Audio::new(move |_| link.send_message(Msg::SentenceState));
 
         Self {
             audio,
-            _audio_listener: audio_listener,
-            duration: Duration::from_secs(5),
+            duration: Duration::from_secs(20),
             sentences: Sentences::new(families),
             state: State::GettingSoundPermission,
             _history: history,
@@ -192,12 +189,21 @@ impl Component for Game {
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
-        if let State::Playing { current } = &self.state {
-            self.audio.set_src(match current.1 {
-                SentenceState::Element => current.0.element_sound_file(),
-                SentenceState::Family => current.0.family_sound_file(),
+        if let State::Playing {
+            current: (st, state),
+        } = &self.state
+        {
+            // The source is reset on each render of the `Playing` state.
+            //
+            // This notably means that pausing and resuming will reset the progress
+            // in the sound. This is voluntary: the sound are very short and makes little
+            // to no sense if taken mid-step, a bad combination for a game intended for
+            // people learning Frennch.
+            self.audio.set_src(match state {
+                SentenceState::Element => st.element_sound_file(),
+                SentenceState::Family => st.family_sound_file(),
             });
-            self.audio.play().ok();
+            self.audio.play();
         }
     }
 
@@ -242,7 +248,7 @@ impl Component for Game {
             },
             // State of game: a sound is playing
             (State::Playing { current }, Msg::Pause) => {
-                self.audio.pause().ok();
+                self.audio.pause();
 
                 self.state = State::PlayingPaused {
                     current: *current,
