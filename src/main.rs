@@ -28,6 +28,7 @@ mod app;
 mod family;
 mod game;
 mod sentences;
+mod style;
 mod timer;
 
 fn main() {

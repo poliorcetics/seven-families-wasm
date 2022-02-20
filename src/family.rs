@@ -2,7 +2,7 @@ use enum_iterator::IntoEnumIterator;
 use serde::{Deserialize, Serialize};
 use yew::{html::Scope, prelude::*};
 
-use crate::app::App;
+use crate::{app::App, style};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoEnumIterator, Serialize, Deserialize)]
 pub enum Family {
@@ -26,13 +26,12 @@ pub enum Family {
 impl Family {
     pub fn render(&self, link: &Scope<App>, selected: bool) -> Html {
         let f = *self;
+        let onclick = link.callback(move |_| <App as Component>::Message::Toggle(f));
+
         html! {
-            <p class="family">
-                <button class="family_btn" onclick={link.callback(move |_| <App as Component>::Message::Toggle(f))}>
-                    { self.to_string() }
-                </button>
-                { if selected { "Selected !" } else { "" } }
-            </p>
+            <button {onclick} class={style::button_select_family(selected)}>
+                { self.to_string() }
+            </button>
         }
     }
 }

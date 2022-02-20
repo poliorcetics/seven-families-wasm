@@ -10,7 +10,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 use yew_router::scope_ext::HistoryHandle;
 
-use crate::{family::Family, game::GameQuery, Route};
+use crate::{family::Family, game::GameQuery, Route, style};
 
 /// See [`module level docs`][self].
 pub struct App {
@@ -73,23 +73,16 @@ impl Component for App {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
 
-        let desc = if self.families.is_empty() {
-            "Choisissez au moins une famille pour jouer".to_string()
-        } else {
-            format!("Vous avez choisi {} famille(s)", self.families.len())
-        };
-
         html! {
             <div>
-                <button onclick={ link.callback(|_| Msg::SelectAllFamilies) }>
+                <button onclick={ link.callback(|_| Msg::SelectAllFamilies) } class={style::button_select_all("#4CAF50")}>
                     { "Sélectionner toutes les familles" }
                 </button>
-                <button onclick={ link.callback(|_| Msg::ClearAllFamilies) }>
+                <button onclick={ link.callback(|_| Msg::ClearAllFamilies) } class={style::button_select_all("#F44336")}>
                     { "Tout déselectionner" }
                 </button>
                 <hr />
                 { self.family_view(link) }
-                <p> { desc } </p>
                 { self.start_button(link) }
             </div>
         }
@@ -100,9 +93,9 @@ impl App {
     /// Make all the families available for selection/deselection.
     fn family_view(&self, link: &Scope<Self>) -> Html {
         html! {
-            <>
+            <div>
                 { for Family::into_enum_iter().map(|f| f.render(link, self.families.contains(&f))) }
-            </>
+            </div>
         }
     }
 
@@ -117,9 +110,12 @@ impl App {
             });
 
             html! {
-                <button {onclick}>
-                    { "Jouer" }
-                </button>
+                <div>
+                    <hr />
+                    <button {onclick}>
+                        { "Jouer" }
+                    </button>
+                </div>
             }
         } else {
             html! {}

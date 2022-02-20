@@ -13,6 +13,7 @@ gloo-timers = "0.2.3"
 instant = { version = "0.1.12", features = ["wasm-bindgen"] }
 rand = { version = "0.8.4", default-features = false, features = ["getrandom"] }
 serde = { version = "1.0.136", features = ["derive"] }
+stylist = { version = "0.10.0", features = ["yew_use_style", "parser", "macros"], default-features = false }
 web-sys = { version = "0.3.56", features = ["HtmlAudioElement"] }
 yew = "0.19.3"
 yew-router = "0.16.0"

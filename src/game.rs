@@ -272,8 +272,9 @@ impl Component for Game {
             State::GettingSoundPermission => html! {
                 <>
                     <button onclick={ ctx.link().callback(|_| Self::Message::SoundPermission) }>
-                        { "Lancer le son" }
+                        { "Lancer la partie" }
                     </button>
+                    <hr />
                     { timer_slider(link, self.duration) }
                 </>
             },
@@ -282,8 +283,8 @@ impl Component for Game {
                 current, ref node, ..
             } => html! {
                 <>
-                    { audio_player(link, current, node.clone()) }
                     { pause_button(link) }
+                    { audio_player(link, current, node.clone()) }
                 </>
             },
             // State: sound was paused.
@@ -291,32 +292,27 @@ impl Component for Game {
             // State: waiting for the coutdown to the next sentence to end.
             State::Waiting { time_left, .. } => html! {
                 <>
-                    <p> { format!("Phrase suivante dans ... {}s", time_left.as_secs()) } </p>
                     { pause_button(link) }
+                    <p> { format!("Phrase suivante dans ... {}s", time_left.as_secs()) } </p>
                 </>
             },
             // State: countdown to next sentence was paused.
             State::WaitingPaused { time_left, .. } => html! {
                 <>
-                    <p> { format!("Phrase suivante dans ... {}s (Pause)", time_left.as_secs()) } </p>
                     { resume_view(link, self.duration) }
+                    <p> { format!("Phrase suivante dans ... {}s (Pause)", time_left.as_secs()) } </p>
                 </>
             },
             // State: game is finished, nothing more to do.
             State::Finished => html! {
                 <>
-                    <p> { "Jeu terminé !" } </p>
                     { go_home_button(link) }
+                    <p> { "Jeu terminé !" } </p>
                 </>
             },
         };
 
-        html! {
-            <div>
-                // <pre> { format!("{:#?}", self) } </pre>
-                { state_view }
-            </div>
-        }
+        html! { state_view }
     }
 }
 
@@ -390,7 +386,7 @@ fn timer_slider(link: &Scope<Game>, current_duration: Duration) -> Html {
                     })
                 }
             />
-            { format!("Compteur: {}s", current_duration.as_secs()) }
+            <p> { format!("Temps entre deux phrases: {}s", current_duration.as_secs()) } </p>
         </>
     }
 }
@@ -410,6 +406,7 @@ fn resume_view(link: &Scope<Game>, current_duration: Duration) -> Html {
         <>
             <button onclick={ link.callback(|_| Msg::Resume) }> { "Reprendre" } </button>
             { timer_slider(link, current_duration) }
+            <hr />
             { go_home_button(link) }
         </>
     }
