@@ -1,5 +1,6 @@
 [package]
-name = "family"
+name = "seven-families-wasm"
+authors = ["Alexis (Poliorcetics) Bouget"]
 version = "0.1.0"
 edition = "2021"
 
