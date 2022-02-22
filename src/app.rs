@@ -10,7 +10,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 use yew_router::scope_ext::HistoryHandle;
 
-use crate::{family::Family, game::GameQuery, Route, style};
+use crate::{family::Family, game::GameQuery, style, Route};
 
 /// See [`module level docs`][self].
 pub struct App {
