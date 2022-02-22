@@ -1,0 +1,161 @@
+/* Style applied all the time, regardless of theme */
+
+* {
+  box-sizing: border-box;
+  font-family: Helvetica;
+  font-size: 1.2em;
+  max-width: 100%;
+  text-align: center;
+  text-decoration: none;
+  width: 98.5%;
+}
+
+div {
+  display: block;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+button {
+  border-radius: 20px;
+  border: none;
+  display: block;
+  padding: 2% 4%;
+}
+
+/* Adapt to light and dark themes */
+
+@media (prefers-color-scheme: dark) {
+  *, html {
+    background-color: black;
+    color: #DDDDDD;
+  }
+
+  button {
+    background-color: #16537E;
+  }
+
+  button.family_selected {
+    background-color: #00546F;
+  }
+
+  button.family_not_selected {
+    background-color: #444444;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  *, html {
+    background-color: #DDDDDD;
+    color: black;
+  }
+
+  button {
+    background-color: darkblue;
+    color: #DDDDDD;
+  }
+
+  button.family_selected {
+    background-color: #008CBA;
+    color: #DDDDDD;
+  }
+
+  button.family_not_selected {
+    background-color: #E7E7E7;
+    color: black;
+  }
+}
+
+/* Input for timer duration */
+
+input[type=range] {
+  -webkit-appearance: none;
+  display: block;
+  height: 1em;
+  margin: 1% 1%;
+  width: 98%;
+}
+input[type=range]:focus {
+  outline: none;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  animate: 0.2s;
+  background: #3071A9;
+  border-radius: 5px;
+  border: 1px solid #000000;
+  box-shadow: 1px 1px 1px #000000;
+  cursor: pointer;
+  height: 0.2em;
+  width: 100%;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  background: #FFFFFF;
+  border-radius: 5px;
+  border: 1px solid #000000;
+  box-shadow: 1px 1px 1px #000000;
+  cursor: pointer;
+  height: 0.8em;
+  margin-top: -11px;
+  width: 0.8em;
+}
+input[type=range]:focus::-webkit-slider-runnable-track {
+  background: #3071A9;
+}
+input[type=range]::-moz-range-track {
+  animate: 0.2s;
+  background: #3071A9;
+  border-radius: 5px;
+  border: 1px solid #000000;
+  box-shadow: 1px 1px 1px #000000;
+  cursor: pointer;
+  height: 0.2em;
+  width: 100%;
+}
+input[type=range]::-moz-range-thumb {
+  background: #FFFFFF;
+  border-radius: 5px;
+  border: 1px solid #000000;
+  box-shadow: 1px 1px 1px #000000;
+  cursor: pointer;
+  height: 0.8em;
+  width: 0.8em;
+}
+input[type=range]::-ms-track {
+  animate: 0.2s;
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+  cursor: pointer;
+  height: 0.2em;
+  width: 100%;
+}
+input[type=range]::-ms-fill-lower {
+  background: #3071A9;
+  border-radius: 10px;
+  border: 1px solid #000000;
+  box-shadow: 1px 1px 1px #000000;
+}
+input[type=range]::-ms-fill-upper {
+  background: #3071A9;
+  border-radius: 10px;
+  border: 1px solid #000000;
+  box-shadow: 1px 1px 1px #000000;
+}
+input[type=range]::-ms-thumb {
+  background: #FFFFFF;
+  border-radius: 5px;
+  border: 1px solid #000000;
+  box-shadow: 1px 1px 1px #000000;
+  cursor: pointer;
+  height: 0.8em;
+  margin-top: 1px;
+  width: 0.8em;
+}
+input[type=range]:focus::-ms-fill-lower {
+  background: #3071A9;
+}
+input[type=range]:focus::-ms-fill-upper {
+  background: #3071A9;
+}
