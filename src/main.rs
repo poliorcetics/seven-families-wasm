@@ -47,16 +47,21 @@ fn launcher() -> Html {
 
 #[derive(Routable, PartialEq, Clone)]
 enum Route {
-    #[at("/")]
+    #[not_found]
+    // Use the crate name at the base root since it is also
+    // the github project name and so it is used in the github.io link:
+    //
+    // https://poliorcetics.github.io/seven-families-wasm/
+    #[at("/seven-families-wasm/")]
     Home,
-    #[at("/game")]
+    #[at("/seven-families-wasm/game")]
     StartGame,
 }
 
 impl Route {
     fn switch(&self) -> Html {
         match self {
-            Route::StartGame => html! { <game::Game /> },
+            Self::StartGame => html! { <game::Game /> },
             _ => html! { <app::App /> },
         }
     }

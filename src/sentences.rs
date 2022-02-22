@@ -107,6 +107,8 @@ impl Sentence {
     }
 }
 
+const IS_FOR_GH_PAGES: bool = option_env!("IS_FOR_GH_PAGES").is_some();
+
 /// Generate a `sound_file` method on `$name`.
 ///
 /// The file for `$name::$variant` is `assets / $folder / $file .mp3`.
@@ -128,7 +130,12 @@ macro_rules! assets {
                 // Ensure the file exists.
                 const _: &[u8] = include_bytes!(concat!("../assets/", $folder, "/0-famille.mp3")).as_slice();
                 // Relative to the root of the website.
-                concat!("/assets/", $folder, "/0-famille.mp3")
+                // Adapted to github pages.
+                if IS_FOR_GH_PAGES {
+                    concat!("/seven-families-wasm/assets/", $folder, "/0-famille.mp3")
+                } else {
+                    concat!("/assets/", $folder, "/0-famille.mp3")
+                }
             }
 
             /// Path to the sound file for the sentence, absolute from the root of
@@ -138,7 +145,14 @@ macro_rules! assets {
                 $( const _: &[u8] = include_bytes!(concat!("../assets/", $folder, "/", $file, ".mp3")).as_slice(); )+
                 match self {
                     // Relative to the root of the website.
-                    $( Self::$variant => concat!("/assets/", $folder, "/", $file, ".mp3"), )+
+                    // Adapted to github pages.
+                    $(
+                        Self::$variant => if IS_FOR_GH_PAGES {
+                            concat!("/seven-families-wasm/assets/", $folder, "/", $file, ".mp3")
+                        } else {
+                            concat!("/assets/", $folder, "/", $file, ".mp3")
+                        },
+                    )+
                 }
             }
         }
