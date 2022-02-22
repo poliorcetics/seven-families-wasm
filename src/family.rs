@@ -4,6 +4,10 @@ use yew::{html::Scope, prelude::*};
 
 use crate::{app::App, style};
 
+/// Families without the sentences in them.
+///
+/// This is used for selection in [`/`][crate::Route::Home]
+/// and with [`GameQuery`][crate::game::GameQuery].
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoEnumIterator, Serialize, Deserialize)]
 pub enum Family {
     /// Ustensils used by a chef when cooking.
@@ -24,14 +28,34 @@ pub enum Family {
 }
 
 impl Family {
+    /// Render the family's button, adapting to whether it is selected or not.
     pub fn render(&self, link: &Scope<App>, selected: bool) -> Html {
         let f = *self;
         let onclick = link.callback(move |_| <App as Component>::Message::Toggle(f));
 
         html! {
-            <button {onclick} class={style::button_select_family(selected)}>
+            <button {onclick} class={style::button_select_family(selected)} style={self.button_style(selected)}>
                 { self.to_string() }
             </button>
+        }
+    }
+
+    /// Color of the family's button.
+    pub fn button_style(&self, selected: bool) -> String {
+        let color = match self {
+            Self::ChiefKit => "purple",
+            Self::Fruits => "orange",
+            Self::Hygiene => "blue",
+            Self::ProfessionalGestures => "black",
+            Self::RedFruits => "red",
+            Self::SmallUstensils => "gray",
+            Self::Trimmings => "darkgreen",
+        };
+
+        if selected {
+            format!("background-color:{color};")
+        } else {
+            format!("border-color:{color};border-style:solid;")
         }
     }
 }
