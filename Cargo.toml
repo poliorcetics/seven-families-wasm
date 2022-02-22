@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 enum-iterator = "0.7.0"
 getrandom = { version = "0.2.4", features = ["js"], default-features = false }
-gloo-console = "0.2.1"
 gloo-timers = "0.2.3"
 instant = { version = "0.1.12", features = ["wasm-bindgen"] }
 rand = { version = "0.8.4", default-features = false, features = ["getrandom"] }

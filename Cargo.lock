@@ -63,24 +63,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "family"
-version = "0.1.0"
-dependencies = [
- "enum-iterator",
- "getrandom",
- "gloo-console",
- "gloo-timers",
- "instant",
- "rand",
- "serde",
- "stylist",
- "wasm-bindgen",
- "web-sys",
- "yew",
- "yew-router",
-]
-
-[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -487,6 +469,23 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "seven-families-wasm"
+version = "0.1.0"
+dependencies = [
+ "enum-iterator",
+ "getrandom",
+ "gloo-timers",
+ "instant",
+ "rand",
+ "serde",
+ "stylist",
+ "wasm-bindgen",
+ "web-sys",
+ "yew",
+ "yew-router",
 ]
 
 [[package]]

@@ -208,9 +208,6 @@ impl Component for Game {
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        let st = &self.state;
-        gloo_console::debug!(format!("{st:?} --- {msg:?}"));
-
         match (&mut self.state, msg) {
             // State of game: timer duration was changed before game started or during a pause.
             (State::GettingSoundPermission | State::WaitingPaused { .. } | State::PlayingPaused { .. }, Msg::ChangeTimer(seconds)) => {
