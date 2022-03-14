@@ -1,37 +1,35 @@
 use enum_iterator::IntoEnumIterator;
-use serde::{Deserialize, Serialize};
-use yew::{html::Scope, prelude::*};
+use yew::html::Scope;
+use yew::prelude::*;
 
-use crate::{app::App, style};
+use crate::game::{BeforeGameMsg, Game};
+use crate::style;
 
 /// Families without the sentences in them.
-///
-/// This is used for selection in [`/`][crate::Route::Home]
-/// and with [`GameQuery`][crate::game::GameQuery].
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoEnumIterator, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, IntoEnumIterator)]
 pub enum Family {
     /// Ustensils used by a chef when cooking.
-    ChiefKit = 0b0000_0001,
+    ChiefKit,
     /// Other fruits, like oranges.
-    Fruits = 0b0000_0010,
+    Fruits,
     /// Hygiene is important for a cook.
-    Hygiene = 0b0000_0100,
+    Hygiene,
     /// Flipping pancakes is a professional gesture.
-    ProfessionalGestures = 0b0000_1000,
+    ProfessionalGestures,
     /// Red fruits, like strawberries.
-    RedFruits = 0b0001_0000,
+    RedFruits,
     /// Small tools used in cooking that are not part
     /// of a chief's kit.
-    SmallUstensils = 0b0010_0000,
+    SmallUstensils,
     /// Trimmings, like cutting cucumbers.
-    Trimmings = 0b0100_0000,
+    Trimmings,
 }
 
 impl Family {
     /// Render the family's button, adapting to whether it is selected or not.
-    pub fn render(&self, link: &Scope<App>, selected: bool) -> Html {
+    pub fn render(&self, link: &Scope<Game>, selected: bool) -> Html {
         let f = *self;
-        let onclick = link.callback(move |_| <App as Component>::Message::Toggle(f));
+        let onclick = link.callback(move |_| BeforeGameMsg::Toggle(f));
 
         html! {
             <button {onclick} class={style::button_select_family(selected)} style={self.button_style(selected)}>
@@ -57,20 +55,6 @@ impl Family {
         } else {
             format!("border-color:{color};border-style:solid;")
         }
-    }
-}
-
-impl TryFrom<u8> for Family {
-    type Error = ();
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        for f in Self::into_enum_iter() {
-            if value == f as u8 {
-                return Ok(f);
-            }
-        }
-
-        Err(())
     }
 }
 

@@ -17,7 +17,7 @@ impl Sentences {
     ///
     /// Initially, all the possible sentences are available in random order
     /// and they are popped by [`Self::draw_one()`].
-    pub fn new(families: HashSet<Family>) -> Self {
+    pub fn new(families: &HashSet<Family>) -> Self {
         // There are 6 elements per family
         let mut sentences = Vec::with_capacity(families.len() * 6);
         for family in families {

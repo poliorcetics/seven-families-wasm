@@ -1,6 +1,4 @@
-//! TODO: Whole game
-//!
-//! More precisely:
+//! TODO:
 //!
 //! - [ ] Start screen
 //!    - [x] Choose at least one family, at most all of them
@@ -11,20 +9,16 @@
 //!    - [x] Button to get permission to play sound
 //!    - [x] Pause button
 //!    - [x] Sentences are given in random order, each N units (seconds)
-//!    - [ ] Show nice buttons
-//! - [ ] Pause screen
+//!    - [x] Show nice buttons
+//! - [x] Pause screen
 //!    - [x] Go back to selecting families
 //!    - [x] Resume game
-//!    - [ ] Choose timer duration, either when game is paused or not started
-//!    - [ ] Show nice buttons
+//!    - [x] Choose timer duration, either when game is paused or not started
+//!    - [x] Show nice buttons
 //! - [x] Finishing the game
 //!    - [x] All sentences have been said
 //!    - [x] Go back to selecting families
-//!    - [ ] Show nice buttons
-use yew::prelude::*;
-use yew_router::prelude::*;
-
-mod app;
+//!    - [x] Show nice buttons
 mod audio;
 mod family;
 mod game;
@@ -33,36 +27,5 @@ mod style;
 mod timer;
 
 fn main() {
-    yew::start_app::<Main>();
-}
-
-#[function_component(Main)]
-fn launcher() -> Html {
-    html! {
-        <BrowserRouter>
-            <Switch<Route> render={ Switch::render(Route::switch) } />
-        </BrowserRouter>
-    }
-}
-
-#[derive(Routable, PartialEq, Clone)]
-enum Route {
-    #[not_found]
-    // Use the crate name at the base root since it is also
-    // the github project name and so it is used in the github.io link:
-    //
-    // https://poliorcetics.github.io/seven-families-wasm/
-    #[at("/seven-families-wasm/")]
-    Home,
-    #[at("/seven-families-wasm/game")]
-    StartGame,
-}
-
-impl Route {
-    fn switch(&self) -> Html {
-        match self {
-            Self::StartGame => html! { <game::Game /> },
-            _ => html! { <app::App /> },
-        }
-    }
+    yew::start_app::<game::Game>();
 }
