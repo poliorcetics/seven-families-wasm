@@ -51,8 +51,6 @@ pub struct Game {
     /// See [`MIN_TIMER_DURATION`], [`MAX_TIMER_DURATION`] and [`State::Waiting`].
     duration: Duration,
     /// The sentences selected to play the game.
-    ///
-    /// They are parsed from a [`GameQuery`] on construction.
     sentences: Sentences,
     /// State of the game.
     state: State,
@@ -99,7 +97,7 @@ pub enum State {
     Waiting {
         // Both `Interval` and `Timer` are cancelled on drop.
         /// Sends a message each second to update the countdown
-        /// to the [next sentence][Msg::NextSentence].
+        /// to the [next sentence][InGameMsg::NextSentence].
         seconds: Interval,
         /// Countdown display to the next sentence.
         time_left: Duration,
@@ -151,7 +149,7 @@ pub enum InGameMsg {
     /// Update the start duration of the countdown
     /// to the next sentence.
     ChangeTimer(u64),
-    /// Go back to [`/`][Route::Home].
+    /// Go back to the starting state, selecting families.
     GoHome,
     /// Launch next sentence sound.
     NextSentence,
@@ -415,9 +413,9 @@ fn start_button(link: &Scope<Game>, families: &HashSet<Family>) -> Html {
 
 /// Produce a [`State::Waiting`] instance filled correctly with the
 /// time left for the [`Timer`] to the next sentence and sending the
-/// [`Msg::UpdateTime`] every second for the countdown display.
+/// [`InGameMsg::UpdateTime`] every second for the countdown display.
 ///
-/// Used on [`Msg::Resume`] and when the [`SentenceState::Element`] sound
+/// Used on [`InGameMsg::Resume`] and when the [`SentenceState::Element`] sound
 /// finishes and the countdown to the next sentence must be launched.
 fn waiting_state(link: &Scope<Game>, time_left: Duration) -> State {
     State::Waiting {
@@ -463,19 +461,19 @@ fn timer_slider(link: &Scope<Game>, current_duration: Duration) -> Html {
     }
 }
 
-/// Button to click on to [pause][Msg::Pause] the game.
+/// Button to click on to [pause][InGameMsg::Pause] the game.
 fn pause_button(link: &Scope<Game>) -> Html {
     html! { <button onclick={ link.callback(|_| InGameMsg::Pause) }> { "Pause" } </button> }
 }
 
-/// Button to click on to [skip to the next sentence][Msg::NextSentence].
+/// Button to click on to [skip to the next sentence][InGameMsg::NextSentence].
 fn next_sentence_button(link: &Scope<Game>) -> Html {
     html! { <button onclick={ link.callback(|_| InGameMsg::NextSentence) }> { "Phrase suivante" } </button> }
 }
 
 /// View shown when the game is paused.
 ///
-/// It displays a ["Reprendre"][Msg::Resume] button, a [slider][timer_slider()]
+/// It displays a ["Reprendre"][InGameMsg::Resume] button, a [slider][timer_slider()]
 /// to select the duration of the next coutdown to the next sentence and a
 /// [button to go home][go_home_button()].
 fn resume_view(link: &Scope<Game>, current_duration: Duration) -> Html {
@@ -489,10 +487,7 @@ fn resume_view(link: &Scope<Game>, current_duration: Duration) -> Html {
     }
 }
 
-/// Button to go back to ['/'][crate::app::App] and selecting families.
-///
-/// This **needs** an [`HistoryHandle`] to be present in the [`Game`] struct
-/// else it will panic trying to access it.
+/// Button to go back to the [starting state][State::SelectingFamilies] and selecting families.
 fn go_home_button(link: &Scope<Game>) -> Html {
     let onclick = link.callback(|_| InGameMsg::GoHome);
 
