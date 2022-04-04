@@ -256,6 +256,7 @@ impl Component for Game {
             State::Waiting { time_left, .. } => html! {
                 <>
                     { pause_button(link) }
+                    { next_sentence_button(link) }
                     <p> { format!("Phrase suivante dans ... {}s", time_left.as_secs()) } </p>
                 </>
             },
@@ -263,6 +264,7 @@ impl Component for Game {
             State::WaitingPaused { time_left, .. } => html! {
                 <>
                     { resume_view(link, self.duration) }
+                    { next_sentence_button(link) }
                     <p> { format!("Phrase suivante dans ... {}s (Pause)", time_left.as_secs()) } </p>
                 </>
             },
@@ -289,8 +291,10 @@ impl Game {
             },
             // State: was waiting for permission to play sound, just got it.
             (State::GettingSoundPermission, InGameMsg::SoundPermission)
-            // State: launch next sentence.
+            // State: launch next sentence (either because the timer just ended or because a "Phrase suivante" button was clicked).
             | (State::Waiting { .. }, InGameMsg::NextSentence)
+            | (State::WaitingPaused { .. }, InGameMsg::NextSentence)
+            // State: the last sentence was drawn, end the game immediately.
             | (State::Playing { .. }, InGameMsg::NextSentence) => {
                 match self.sentences.draw_one() {
                     None => self.state = State::Finished,
@@ -462,6 +466,11 @@ fn timer_slider(link: &Scope<Game>, current_duration: Duration) -> Html {
 /// Button to click on to [pause][Msg::Pause] the game.
 fn pause_button(link: &Scope<Game>) -> Html {
     html! { <button onclick={ link.callback(|_| InGameMsg::Pause) }> { "Pause" } </button> }
+}
+
+/// Button to click on to [skip to the next sentence][Msg::NextSentence].
+fn next_sentence_button(link: &Scope<Game>) -> Html {
+    html! { <button onclick={ link.callback(|_| InGameMsg::NextSentence) }> { "Phrase suivante" } </button> }
 }
 
 /// View shown when the game is paused.
