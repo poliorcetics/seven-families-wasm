@@ -29,6 +29,8 @@ mod timer;
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
+pub(crate) const IS_FOR_GH_PAGES: bool = option_env!("IS_FOR_GH_PAGES").is_some();
+
 fn main() {
     yew::start_app::<game::Game>();
 }

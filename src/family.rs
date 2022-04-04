@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use enum_iterator::IntoEnumIterator;
 use yew::html::Scope;
 use yew::prelude::*;
@@ -33,6 +35,12 @@ impl Family {
 
         html! {
             <button {onclick} class={style::button_select_family(selected)} style={self.button_style(selected)}>
+                <img
+                    src={ self.logo_file() }
+                    alt={ format!("Logo de la famille {}", self) }
+                    class={ "family_not_selected" }
+                    style={ self.logo_style(selected).to_string() }
+                />
                 { self.to_string() }
             </button>
         }
@@ -40,7 +48,29 @@ impl Family {
 
     /// Color of the family's button.
     pub fn button_style(&self, selected: bool) -> String {
-        let color = match self {
+        let color = self.color();
+
+        if selected {
+            format!("background-color:{color};border-color:{color};border-style:solid;")
+        } else {
+            format!("border-color:{color};border-style:solid;")
+        }
+    }
+
+    /// Style for logos.
+    pub fn logo_style(&self, selected: bool) -> Cow<'static, str> {
+        const STYLE: &str = "align:center;max-width:50px;max-height:50px;margin-right:1%;";
+        if selected {
+            let color = self.color();
+            Cow::Owned(format!("{STYLE}background-color:{color};"))
+        } else {
+            Cow::Borrowed(STYLE)
+        }
+    }
+
+    /// Color associated with the family.
+    pub fn color(&self) -> &'static str {
+        match self {
             Self::ChiefKit => "purple",
             Self::Fruits => "orange",
             Self::Hygiene => "blue",
@@ -48,12 +78,33 @@ impl Family {
             Self::RedFruits => "red",
             Self::SmallUstensils => "gray",
             Self::Trimmings => "darkgreen",
-        };
+        }
+    }
 
-        if selected {
-            format!("background-color:{color};")
-        } else {
-            format!("border-color:{color};border-style:solid;")
+    /// Path to logo file.
+    pub fn logo_file(&self) -> &'static str {
+        macro_rules! logo_image_file {
+            ($folder:literal) => {{
+                // Check for file existence at compile-time
+                const _: &[u8] =
+                    include_bytes!(concat!("../assets/", $folder, "/0-logo.png")).as_slice();
+                // Adapt file path after checking if we're running on github pages or no
+                if crate::IS_FOR_GH_PAGES {
+                    concat!("/seven-families-wasm/assets/", $folder, "/0-logo.png")
+                } else {
+                    concat!("/assets/", $folder, "/0-logo.png")
+                }
+            }};
+        }
+
+        match self {
+            Self::ChiefKit => logo_image_file!("mallette"),
+            Self::Fruits => logo_image_file!("fruits"),
+            Self::Hygiene => logo_image_file!("hygiene"),
+            Self::ProfessionalGestures => logo_image_file!("gestes-professionnels"),
+            Self::RedFruits => logo_image_file!("fruits-rouges"),
+            Self::SmallUstensils => logo_image_file!("petit-materiel"),
+            Self::Trimmings => logo_image_file!("taillages"),
         }
     }
 }

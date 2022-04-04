@@ -36,11 +36,11 @@ button {
     background-color: #16537E;
   }
 
-  button.family_selected {
+  .family_selected {
     background-color: #00546F;
   }
 
-  button.family_not_selected {
+  .family_not_selected {
     background-color: #444444;
   }
 }
@@ -56,12 +56,12 @@ button {
     color: #DDDDDD;
   }
 
-  button.family_selected {
+  .family_selected {
     background-color: #008CBA;
     color: #DDDDDD;
   }
 
-  button.family_not_selected {
+  .family_not_selected {
     background-color: #E7E7E7;
     color: black;
   }

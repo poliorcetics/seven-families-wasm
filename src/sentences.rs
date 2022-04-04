@@ -107,13 +107,11 @@ impl Sentence {
     }
 }
 
-const IS_FOR_GH_PAGES: bool = option_env!("IS_FOR_GH_PAGES").is_some();
-
 /// Generate a `sound_file` method on `$name`.
 ///
 /// The file for `$name::$variant` is `assets / $folder / $file .mp3`.
 macro_rules! assets {
-    ($(#[$meta:meta])* $name:ident: $folder:expr; $($(#[$variant_meta:meta])* $variant:ident: $file:expr),+ $(,)?) => {
+    ($(#[$meta:meta])* $name:ident: $folder:literal; $($(#[$variant_meta:meta])* $variant:ident: $file:literal),+ $(,)?) => {
         $(#[$meta])*
         #[derive(Debug, Clone, Copy, IntoEnumIterator)]
         pub enum $name {
@@ -131,7 +129,7 @@ macro_rules! assets {
                 const _: &[u8] = include_bytes!(concat!("../assets/", $folder, "/0-famille.mp3")).as_slice();
                 // Relative to the root of the website.
                 // Adapted to github pages.
-                if IS_FOR_GH_PAGES {
+                if crate::IS_FOR_GH_PAGES {
                     concat!("/seven-families-wasm/assets/", $folder, "/0-famille.mp3")
                 } else {
                     concat!("/assets/", $folder, "/0-famille.mp3")
@@ -147,7 +145,7 @@ macro_rules! assets {
                     // Relative to the root of the website.
                     // Adapted to github pages.
                     $(
-                        Self::$variant => if IS_FOR_GH_PAGES {
+                        Self::$variant => if crate::IS_FOR_GH_PAGES {
                             concat!("/seven-families-wasm/assets/", $folder, "/", $file, ".mp3")
                         } else {
                             concat!("/assets/", $folder, "/", $file, ".mp3")
